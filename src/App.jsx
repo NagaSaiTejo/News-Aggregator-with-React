@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import _ from 'lodash';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import sortBy from 'lodash/sortBy';
 import './App.css';
+
+const VirtualizedList = React.lazy(() => import('./VirtualizedList'));
 
 function App() {
   const [articles, setArticles] = useState([]);
@@ -15,17 +17,13 @@ function App() {
         const response = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
         const storyIds = await response.json();
         
-        const stories = [];
-        // Anti-pattern: sequential fetching in a loop causing network waterfall
-        for (const id of storyIds.slice(0, 500)) {
-          const storyResp = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-          const storyData = await storyResp.json();
-          if (storyData) {
-            stories.push(storyData);
-          }
-          // Intentionally update state frequently (although moving it to end is also fine, let's keep it simple at the end)
-        }
-        setArticles(stories);
+        const idsToFetch = storyIds.slice(0, 500);
+        const fetchPromises = idsToFetch.map(id => 
+          fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(res => res.json())
+        );
+        
+        const stories = await Promise.all(fetchPromises);
+        setArticles(stories.filter(Boolean));
       } catch (error) {
         console.error("Failed to fetch stories", error);
       } finally {
@@ -36,23 +34,32 @@ function App() {
     fetchAllStories();
   }, []);
 
-  // Inefficient sorting and filtering using full lodash
-  const filteredArticles = _.filter(articles, (article) => 
-    article.title && article.title.toLowerCase().includes(filter.toLowerCase())
-  );
-  
-  const sortedArticles = sortOrder === 'asc' 
-    ? _.sortBy(filteredArticles, 'score')
-    : _.sortBy(filteredArticles, 'score').reverse();
-
   const handleSortToggle = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
   };
 
+  const sortedAndFilteredArticles = useMemo(() => {
+    const filtered = articles.filter(article => 
+      article.title && article.title.toLowerCase().includes(filter.toLowerCase())
+    );
+    
+    const sorted = sortBy(filtered, 'score');
+    return sortOrder === 'asc' ? sorted : sorted.reverse();
+  }, [articles, filter, sortOrder]);
+
   return (
     <div className="app-container">
-      {/* Unoptimized Images */}
-      <img src="/hero-image.png" alt="Hero" className="hero-image" />
+      <img 
+        src="/hero-image.png" 
+        srcSet="/hero-image.png 1000w, /hero-image.png 2000w"
+        sizes="(max-width: 1000px) 100vw, 1000px"
+        width="1200" 
+        height="400" 
+        alt="Hero" 
+        className="hero-image optimized" 
+        loading="lazy"
+        data-testid="hero-image"
+      />
       
       <header className="header">
         <h1>CyberNews Aggregator</h1>
@@ -74,22 +81,11 @@ function App() {
       
       <div className="content">
         {loading ? (
-          <div className="loading" style={{color: '#ff0055'}}>Establishing connection stream... (Downloading 500 articles sequentially)</div>
+          <div className="loading" style={{color: '#00f3ff'}}>Establishing parallel connection stream...</div>
         ) : (
-          <div className="article-list">
-            {/* No List Virtualization: Render all matching items */}
-            {sortedArticles.map((article) => (
-              <div key={article.id} className="article-card">
-                <h2><a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a></h2>
-                <div className="article-meta">
-                  <span className="score">Score: {article.score}</span>
-                  <span className="author">By: {article.by}</span>
-                  {/* Expensive Computations in Render */}
-                  <span className="date">Date: {new Date(article.time * 1000).toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Suspense fallback={<div className="loading">Initializing Neural List Render...</div>}>
+            <VirtualizedList articles={sortedAndFilteredArticles} />
+          </Suspense>
         )}
       </div>
     </div>

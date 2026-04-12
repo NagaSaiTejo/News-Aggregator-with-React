@@ -1,16 +1,40 @@
-# React + Vite
+# CyberNews Aggregator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A High-Performance React News Aggregator built with Vite, React, and Google's Core Web Vitals (CWV) in mind. This project sources real-time data from the HackerNews API and demonstrates the difference between unoptimized and optimized technical strategies in modern web development.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This project contains two distinct versions:
 
-## React Compiler
+1. **`main` Branch (Optimized)**: The highly tuned variant showcasing parallel processing, list virtualization, selective imports, image optimization, and bundle chunking.
+2. **`slow-version` Branch (Unoptimized)**: A deliberately poorly-performing baseline variant built with intentional anti-patterns to establish comparison metrics.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Installation & Running Locally
 
-## Expanding the ESLint configuration
+### Optimized Version (main)
+To run the optimized app efficiently locally:
+1. `npm install`
+2. `npm run dev`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Slow Version (slow-version)
+To observe the anti-patterns and performance bottlenecks:
+1. `git checkout slow-version`
+2. `npm install`
+3. `npm run dev`
+
+### Using Docker (Production Deployment)
+The project comes packaged with Docker to easily deploy and run the optimized App using Nginx.
+
+Ensure everything is configured via `.env` (use `.env.example` as a template):
+```env
+PORT=3000
+```
+Run the following command:
+```bash
+docker-compose up -d --build
+```
+This builds your containerized app, resolving multi-stage configurations, and binding it seamlessly to `localhost:3000`. Wait until the container reports `healthy` before establishing a connection.
+
+## Performance Auditing
+
+All metrics and steps taken to remediate Core Web Vitals (CLS, INP/TBT, LCP) have been meticulously documented in `PERFORMANCE.md`.
